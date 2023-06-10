@@ -2,6 +2,7 @@ import numpy as np
 import ccxt
 import time
 import requests
+import json
 
 
 class Hedge:
@@ -90,6 +91,14 @@ class Hedge:
         """
         while True:
             try:
+                # Get perps position
+                asset = str(self.symbol) + "-PERPETUAL"
+                positions = self.load.fetchPositions(
+                    symbols=['BTC-PERPETUAL'], params={})
+                perps_size = (positions[0]['info']['size'])
+                perps_size = float(perps_size)
+
+                # Hedging multiple lvls logic
                 for level in range(1, self.num_lvls+1):
                     # Calculate upper strike price levels
                     upper_level_strike = self.strike + \
@@ -97,6 +106,9 @@ class Hedge:
                     print(upper_level_strike)
                     if self.current_index_price() > upper_level_strike:
                         print("Need to hedge.")
+                        self.delta_hedge()
+                    # To cater for scenario when mkt turns around after hedging (unhedge)
+                    if perps_size > 0 and self.strike < self.current_index_price() < upper_level_strike:
                         self.delta_hedge()
                     else:
                         print("No need to hedge.")
@@ -109,10 +121,13 @@ class Hedge:
                     if self.current_index_price() < lower_level_strike:
                         print("Need to hedge.")
                         self.delta_hedge()
+                    # To cater for scenario when mkt turns around after hedging (unhedge)
+                    if perps_size > 0 and self.strike > self.current_index_price() > lower_level_strike:
+                        self.delta_hedge()
                     else:
                         print("No need to hedge.")
 
-                time.sleep(10)  # 1 hr interval
+                time.sleep(3600)  # 1 hr interval
 
             except Exception as e:
                 print(
