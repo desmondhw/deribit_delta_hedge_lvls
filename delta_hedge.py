@@ -100,37 +100,42 @@ class Hedge:
                     symbols=['BTC-PERPETUAL'], params={})
                 perps_size = (positions[0]['info']['size'])
                 perps_size = float(perps_size)
+                print(f"Perps Size = {perps_size}\n")
 
                 # Hedging multiple lvls logic
                 for level in range(1, self.num_lvls+1):
+
                     # Calculate upper strike price levels
                     upper_level_strike = self.strike + \
                         (level * self.strike * self.price_change_percent)
                     print(upper_level_strike)
+
+                    levels.append(upper_level_strike)
+
                     if self.current_index_price() > upper_level_strike:
                         print("Need to hedge.")
                         self.delta_hedge()
                     # To cater for scenario when mkt turns around after hedging (unhedge)
                     if perps_size > 0 and self.strike < self.current_index_price() < upper_level_strike:
                         self.delta_hedge()
-                    else:
-                        print("No need to hedge.")
 
                 levels.append("Lower Levels:")
 
                 for level in range(-self.num_lvls, 0):
+
                     # Calculate lower strike price levels
                     lower_level_strike = self.strike + \
                         (level * self.strike * self.price_change_percent)
                     print(lower_level_strike)
+
+                    levels.append(lower_level_strike)
+
                     if self.current_index_price() < lower_level_strike:
                         print("Need to hedge.")
                         self.delta_hedge()
                     # To cater for scenario when mkt turns around after hedging (unhedge)
                     if perps_size > 0 and self.strike > self.current_index_price() > lower_level_strike:
                         self.delta_hedge()
-                    else:
-                        print("No need to hedge.")
 
                 print(levels)
                 time.sleep(3600)  # 1 hr interval
