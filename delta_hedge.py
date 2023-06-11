@@ -91,6 +91,9 @@ class Hedge:
         """
         while True:
             try:
+                levels = []
+                levels.append("Upper Levels:")
+
                 # Get perps position
                 asset = str(self.symbol) + "-PERPETUAL"
                 positions = self.load.fetchPositions(
@@ -113,6 +116,8 @@ class Hedge:
                     else:
                         print("No need to hedge.")
 
+                levels.append("Lower Levels:")
+
                 for level in range(-self.num_lvls, 0):
                     # Calculate lower strike price levels
                     lower_level_strike = self.strike + \
@@ -127,6 +132,7 @@ class Hedge:
                     else:
                         print("No need to hedge.")
 
+                print(levels)
                 time.sleep(3600)  # 1 hr interval
 
             except Exception as e:
