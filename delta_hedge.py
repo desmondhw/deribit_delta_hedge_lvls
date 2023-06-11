@@ -100,7 +100,6 @@ class Hedge:
                     symbols=['BTC-PERPETUAL'], params={})
                 perps_size = (positions[0]['info']['size'])
                 perps_size = float(perps_size)
-                print(f"Perps Size = {perps_size}\n")
 
                 # Hedging multiple lvls logic
                 for level in range(1, self.num_lvls+1):
@@ -138,6 +137,7 @@ class Hedge:
                         self.delta_hedge()
 
                 print(levels)
+                print(f"Perps Size = {perps_size}\n")
                 time.sleep(3600)  # 1 hr interval
 
             except Exception as e:
