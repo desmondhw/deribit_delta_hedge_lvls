@@ -94,11 +94,13 @@ class Hedge:
                 levels = []
                 levels.append("Upper Levels:")
 
-                # Get perps position
-                asset = str(self.symbol) + "-PERPETUAL"
+                # Get Perps position size
                 positions = self.load.fetchPositions(
-                    symbols=['BTC-PERPETUAL'], params={})
-                perps_size = (positions[0]['info']['size'])
+                    symbols=[f'{self.symbol}-PERPETUAL'], params={})
+                if positions:
+                    perps_size = positions[0]['info'].get('size', 0)
+                else:
+                    perps_size = 0
                 perps_size = float(perps_size)
 
                 # Hedging multiple lvls logic
