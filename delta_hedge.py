@@ -118,7 +118,7 @@ class Hedge:
                         print("Need to hedge.")
                         self.delta_hedge()
                     # To cater for scenario when mkt turns around after hedging (unhedge)
-                    if perps_size > 0 and self.strike < self.current_index_price() < upper_level_strike:
+                    if perps_size > 0 and self.strike > self.current_index_price() < upper_level_strike:
                         self.delta_hedge()
 
                 levels.append("Lower Levels:")
@@ -136,7 +136,7 @@ class Hedge:
                         print("Need to hedge.")
                         self.delta_hedge()
                     # To cater for scenario when mkt turns around after hedging (unhedge)
-                    if perps_size < 0 and self.strike > self.current_index_price() > lower_level_strike:
+                    if perps_size < 0 and self.strike < self.current_index_price() > lower_level_strike:
                         self.delta_hedge()
 
                 print(levels)
