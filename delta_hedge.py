@@ -3,6 +3,7 @@ import ccxt
 import time
 import requests
 import json
+import time
 
 
 class Hedge:
@@ -135,11 +136,15 @@ class Hedge:
                         print("Need to hedge.")
                         self.delta_hedge()
                     # To cater for scenario when mkt turns around after hedging (unhedge)
-                    if perps_size > 0 and self.strike > self.current_index_price() > lower_level_strike:
+                    if perps_size < 0 and self.strike > self.current_index_price() > lower_level_strike:
                         self.delta_hedge()
 
                 print(levels)
                 print(f"Perps Size = {perps_size}\n")
+
+                current_time = time.strftime('%H:%M:%S', time.localtime())
+                print(current_time)
+                
                 time.sleep(3600)  # 1 hr interval
 
             except Exception as e:
