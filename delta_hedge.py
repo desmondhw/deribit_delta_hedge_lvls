@@ -38,6 +38,8 @@ class Hedge:
         self.price_change_percent = price_change_percent
         self.num_lvls = num_lvls
 
+        self.hedged_once = False  # Initialized to False to keep track of whether an initial hedge has been executed.
+
         if ((self.symbol != 'BTC') and (self.symbol != 'ETH')):
             raise ValueError(
                 "Incorrect symbol - please choose between 'BTC' or 'ETH'")
@@ -80,6 +82,7 @@ class Hedge:
             asset = str(self.symbol) + "-PERPETUAL"
             order_size = abs(current_delta*avg_price)
             self.load.create_market_order(asset, sign, order_size)
+            self.hedged_once = True  # Update the hedged_once status after executing a hedge
             print("Rebalancing trade to achieve delta-neutral portfolio:",
                   str(sign), str(order_size/avg_price), str(self.symbol))
         else:
@@ -89,6 +92,10 @@ class Hedge:
     def run_loop(self):
         """
         Runs the delta-hedge script every hr to check the delta at every +/-k % change.
+
+        Initially, checks the current index price every minute. 
+        After an initial hedge is executed and perps_size is not 0, it will delta hedge every hourly.
+        
         """
         while True:
             try:
@@ -145,7 +152,16 @@ class Hedge:
                 current_time = time.strftime('%H:%M:%S', time.localtime())
                 print(current_time)
                 
-                time.sleep(3600)  # 1 hr interval
+                
+                # Update the sleep interval
+                if self.hedged_once and perps_size != 0:
+                    sleep_interval = 3600  # 1 hr
+                else:
+                    sleep_interval = 60  # 1 minute
+
+                print(levels)
+                print(f"Perps Size = {perps_size}\n")
+                time.sleep(sleep_interval)
 
             except Exception as e:
                 print(
