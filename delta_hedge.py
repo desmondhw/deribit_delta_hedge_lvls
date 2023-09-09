@@ -152,6 +152,8 @@ class Hedge:
                 current_time = time.strftime('%H:%M:%S', time.localtime())
                 print(current_time)
                 
+                print(f"Hedged Once Flag = {self.hedged_once}")
+                print("\n")
                 
                 # Update the sleep interval
                 if self.hedged_once and perps_size != 0:
@@ -159,8 +161,6 @@ class Hedge:
                 else:
                     sleep_interval = 60  # 1 minute
 
-                print(levels)
-                print(f"Perps Size = {perps_size}\n")
                 time.sleep(sleep_interval)
 
             except Exception as e:
