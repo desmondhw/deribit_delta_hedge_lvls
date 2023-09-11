@@ -102,6 +102,8 @@ class Hedge:
                 levels = []
                 levels.append("Upper Levels:")
 
+                current_index = self.current_index_price() 
+
                 # Get Perps position size
                 positions = self.load.fetchPositions(
                     symbols=[f'{self.symbol}-PERPETUAL'], params={})
@@ -121,11 +123,11 @@ class Hedge:
 
                     levels.append(upper_level_strike)
 
-                    if self.current_index_price() > upper_level_strike:
+                    if current_index > upper_level_strike:
                         print("Delta hedge function running...")
                         self.delta_hedge()
                     # To cater for scenario when mkt turns around after hedging (unhedge)
-                    if perps_size > 0 and self.strike > self.current_index_price() < upper_level_strike:
+                    if perps_size > 0 and self.strike > current_index < upper_level_strike:
                         self.delta_hedge()
 
                 levels.append("\nLower Levels:")
@@ -139,14 +141,14 @@ class Hedge:
 
                     levels.append(lower_level_strike)
 
-                    if self.current_index_price() < lower_level_strike:
+                    if current_index < lower_level_strike:
                         print("Delta hedge function running....")
                         self.delta_hedge()
                     # To cater for scenario when mkt turns around after hedging (unhedge)
-                    if perps_size < 0 and self.strike < self.current_index_price() > lower_level_strike:
+                    if perps_size < 0 and self.strike < current_index > lower_level_strike:
                         self.delta_hedge()
                 
-                
+
                 # Print levels
                 for item in levels:
                     if item == 'Lower Levels:':
