@@ -7,7 +7,7 @@ import time
 
 
 class Hedge:
-    def __init__(self, api_id, api_secret, symbol, threshold, strike, price_change_percent, num_lvls):
+    def __init__(self, api_id, api_secret, symbol, threshold, strike, price_change_percent, num_lvls, hedged_once=False):
         """
         Initializing Hedge class.
         Parameters
@@ -38,7 +38,7 @@ class Hedge:
         self.price_change_percent = price_change_percent
         self.num_lvls = num_lvls
 
-        self.hedged_once = False  # Initialized to False to keep track of whether an initial hedge has been executed.
+        self.hedged_once = hedged_once  # Initialized to False to keep track of whether an initial hedge has been executed.
 
         if ((self.symbol != 'BTC') and (self.symbol != 'ETH')):
             raise ValueError(
