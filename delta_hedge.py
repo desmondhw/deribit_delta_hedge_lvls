@@ -7,7 +7,7 @@ import time
 
 
 class Hedge:
-    def __init__(self, api_id, api_secret, symbol, threshold, strike, price_change_percent, num_lvls, hedged_once=False):
+    def __init__(self, api_id, api_secret, symbol, threshold, strike, price_change_percent, hedged_once=False):
         """
         Initializing Hedge class.
         Parameters
@@ -36,7 +36,6 @@ class Hedge:
         self.threshold = abs(float(threshold))
         self.strike = strike
         self.price_change_percent = price_change_percent
-        self.num_lvls = num_lvls
 
         self.hedged_once = hedged_once  # Initialized to False to keep track of whether an initial hedge has been executed.
 
@@ -92,7 +91,7 @@ class Hedge:
 
     def run_loop(self):
         """
-        Runs the delta-hedge script every hr to check the delta at every +/-k % change.
+        Runs the delta-hedge script every hr to check the delta.
 
         Initially, checks the current index price every minute. 
         After an initial hedge is executed and perps_size is not 0, it will delta hedge every hourly.
@@ -100,9 +99,6 @@ class Hedge:
         """
         while True:
             try:
-                levels = []
-                levels.append("Upper Levels:")
-
                 current_index = self.current_index_price() 
 
                 # Get Perps position size
@@ -113,54 +109,37 @@ class Hedge:
                 else:
                     perps_size = 0
                 perps_size = float(perps_size)
+                print(f"\nPerps Size = {perps_size}\n")
 
-                # Hedging multiple lvls logic
-                for level in range(1, self.num_lvls+1):
+                
+                # Hedging logic
+                
+                # Calculate upper strike price levels
+                upper_level_strike = self.strike + \
+                    (self.strike * self.price_change_percent)
 
-                    # Calculate upper strike price levels
-                    upper_level_strike = self.strike + \
-                        (level * self.strike * self.price_change_percent)
-                    print(upper_level_strike)
+                if current_index > upper_level_strike:
+                    print("Delta hedge function running...")
+                    self.delta_hedge()
 
-                    levels.append(upper_level_strike)
+                # Calculate lower strike price levels
+                lower_level_strike = self.strike - \
+                    (self.strike * self.price_change_percent)
 
-                    if current_index > upper_level_strike:
-                        print("Delta hedge function running...")
-                        self.delta_hedge()
-                    # To cater for scenario when mkt turns around after hedging (unhedge)
-                    if perps_size != 0:
-                    # if perps_size > 0 and self.strike > current_index < upper_level_strike:
-                        self.delta_hedge()
+                if current_index < lower_level_strike:
+                    print("Delta hedge function running....")
+                    self.delta_hedge()
 
-                levels.append("\nLower Levels:")
-
-                for level in range(-1, -self.num_lvls - 1, -1):
-
-                    # Calculate lower strike price levels
-                    lower_level_strike = self.strike + \
-                        (level * self.strike * self.price_change_percent)
-                    print(lower_level_strike)
-
-                    levels.append(lower_level_strike)
-
-                    if current_index < lower_level_strike:
-                        print("Delta hedge function running....")
-                        self.delta_hedge()
-                    # To cater for scenario when mkt turns around after hedging (unhedge)
-                    if perps_size != 0:
-                    # if perps_size < 0 and self.strike < current_index > lower_level_strike:
-                        self.delta_hedge()
+                # To cater for scenario when mkt turns around after hedging (unhedge)
+                if perps_size != 0:
+                # if perps_size < 0 and self.strike < current_index > lower_level_strike:
+                    self.delta_hedge()
                 
 
                 # Print levels
-                for item in levels:
-                    if item == 'Lower Levels:':
-                        print('\n' + str(item), end=', ')
-                    else:
-                        print(item, end=', ')
-
-                print(f"\nPerps Size = {perps_size}\n")
-
+                print(f"Upper Level: {upper_level_strike}")
+                print(f"Lower Level: {lower_level_strike}")
+                
                 current_time = time.strftime('%H:%M:%S', time.localtime())
                 print(current_time)
                 
