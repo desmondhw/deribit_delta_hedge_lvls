@@ -67,6 +67,7 @@ class Hedge:
         Rebalances entire portfolio to be delta-neutral based on current delta exposure.
         """
         current_delta = self.current_delta()
+        print(f'Current delta is {current_delta}.')
         # if delta is negative, we must BUY futures to hedge our negative exposure
         if current_delta < 0:
             sign = 'buy'
@@ -127,7 +128,8 @@ class Hedge:
                         print("Delta hedge function running...")
                         self.delta_hedge()
                     # To cater for scenario when mkt turns around after hedging (unhedge)
-                    if perps_size > 0 and self.strike > current_index < upper_level_strike:
+                    if perps_size != 0:
+                    # if perps_size > 0 and self.strike > current_index < upper_level_strike:
                         self.delta_hedge()
 
                 levels.append("\nLower Levels:")
@@ -145,7 +147,8 @@ class Hedge:
                         print("Delta hedge function running....")
                         self.delta_hedge()
                     # To cater for scenario when mkt turns around after hedging (unhedge)
-                    if perps_size < 0 and self.strike < current_index > lower_level_strike:
+                    if perps_size != 0:
+                    # if perps_size < 0 and self.strike < current_index > lower_level_strike:
                         self.delta_hedge()
                 
 
