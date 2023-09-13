@@ -7,7 +7,7 @@ import time
 
 
 class Hedge:
-    def __init__(self, api_id, api_secret, symbol, threshold, strike, price_change_percent, num_lvls):
+    def __init__(self, api_id, api_secret, symbol, threshold, strike, price_change_percent, num_lvls, hedged_once=False):
         """
         Initializing Hedge class.
         Parameters
@@ -38,6 +38,8 @@ class Hedge:
         self.price_change_percent = price_change_percent
         self.num_lvls = num_lvls
 
+        self.hedged_once = hedged_once  # Initialized to False to keep track of whether an initial hedge has been executed.
+
         if ((self.symbol != 'BTC') and (self.symbol != 'ETH')):
             raise ValueError(
                 "Incorrect symbol - please choose between 'BTC' or 'ETH'")
@@ -65,6 +67,7 @@ class Hedge:
         Rebalances entire portfolio to be delta-neutral based on current delta exposure.
         """
         current_delta = self.current_delta()
+        print(f'Current delta is {current_delta}.')
         # if delta is negative, we must BUY futures to hedge our negative exposure
         if current_delta < 0:
             sign = 'buy'
@@ -80,6 +83,7 @@ class Hedge:
             asset = str(self.symbol) + "-PERPETUAL"
             order_size = abs(current_delta*avg_price)
             self.load.create_market_order(asset, sign, order_size)
+            self.hedged_once = True  # Update the hedged_once status after executing a hedge
             print("Rebalancing trade to achieve delta-neutral portfolio:",
                   str(sign), str(order_size/avg_price), str(self.symbol))
         else:
@@ -89,11 +93,17 @@ class Hedge:
     def run_loop(self):
         """
         Runs the delta-hedge script every hr to check the delta at every +/-k % change.
+
+        Initially, checks the current index price every minute. 
+        After an initial hedge is executed and perps_size is not 0, it will delta hedge every hourly.
+        
         """
         while True:
             try:
                 levels = []
                 levels.append("Upper Levels:")
+
+                current_index = self.current_index_price() 
 
                 # Get Perps position size
                 positions = self.load.fetchPositions(
@@ -114,16 +124,17 @@ class Hedge:
 
                     levels.append(upper_level_strike)
 
-                    if self.current_index_price() > upper_level_strike:
+                    if current_index > upper_level_strike:
                         print("Delta hedge function running...")
                         self.delta_hedge()
                     # To cater for scenario when mkt turns around after hedging (unhedge)
-                    if perps_size > 0 and self.strike > self.current_index_price() < upper_level_strike:
+                    if perps_size != 0:
+                    # if perps_size > 0 and self.strike > current_index < upper_level_strike:
                         self.delta_hedge()
 
-                levels.append("Lower Levels:")
+                levels.append("\nLower Levels:")
 
-                for level in range(-self.num_lvls, 0):
+                for level in range(-1, -self.num_lvls - 1, -1):
 
                     # Calculate lower strike price levels
                     lower_level_strike = self.strike + \
@@ -132,20 +143,37 @@ class Hedge:
 
                     levels.append(lower_level_strike)
 
-                    if self.current_index_price() < lower_level_strike:
+                    if current_index < lower_level_strike:
                         print("Delta hedge function running....")
                         self.delta_hedge()
                     # To cater for scenario when mkt turns around after hedging (unhedge)
-                    if perps_size < 0 and self.strike < self.current_index_price() > lower_level_strike:
+                    if perps_size != 0:
+                    # if perps_size < 0 and self.strike < current_index > lower_level_strike:
                         self.delta_hedge()
+                
 
-                print(levels)
-                print(f"Perps Size = {perps_size}\n")
+                # Print levels
+                for item in levels:
+                    if item == 'Lower Levels:':
+                        print('\n' + str(item), end=', ')
+                    else:
+                        print(item, end=', ')
+
+                print(f"\nPerps Size = {perps_size}\n")
 
                 current_time = time.strftime('%H:%M:%S', time.localtime())
                 print(current_time)
                 
-                time.sleep(3600)  # 1 hr interval
+                print(f"Hedged Once Flag = {self.hedged_once}")
+                print("\n")
+                
+                # Update the sleep interval
+                if self.hedged_once and perps_size != 0:
+                    sleep_interval = 3600  # 1 hr
+                else:
+                    sleep_interval = 60  # 1 minute
+
+                time.sleep(sleep_interval)
 
             except Exception as e:
                 print(
