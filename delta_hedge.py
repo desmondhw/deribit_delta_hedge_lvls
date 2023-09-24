@@ -71,23 +71,60 @@ class Hedge:
         if current_delta < 0:
             sign = 'buy'
         # if delta is positive, we must SELL futures to hedge our positive exposure
-        if current_delta > 0:
+        elif current_delta > 0:
             sign = 'sell'
+        else:
+            print("No need to hedge. Current portfolio delta:", current_delta)
+            return
+
         # retrieve the average price of the perpetual future contract for the asset
         # average of the open, high, low, close prices in last 1min interval.
         avg_price = np.mean(self.load.fetch_ohlcv(
             str(self.symbol)+"-PERPETUAL", limit=10)[-1][1:5])
+        
         # if the absolute delta exposure is greater than our threshold then we place a hedging trade
         if abs(current_delta) >= self.threshold:
             asset = str(self.symbol) + "-PERPETUAL"
             order_size = abs(current_delta*avg_price)
-            self.load.create_market_order(asset, sign, order_size)
-            self.hedged_once = True  # Update the hedged_once status after executing a hedge
-            print("Rebalancing trade to achieve delta-neutral portfolio:",
-                  str(sign), str(order_size/avg_price), str(self.symbol))
+
+            start_time = time.time()  # Store the start time for the chaser feature
+
+            while order_size > 0:
+                order_book = self.load.fetch_order_book(asset)
+                if sign == 'buy':
+                    price = order_book['bids'][0][0] # best bid
+                else:
+                    price = order_book['asks'][0][0] # best offer
+                
+                # create the limit order
+                order = self.load.create_limit_order(asset, sign, order_size, price)
+                
+                time.sleep(5)  # wait for 5 seconds
+                
+                # check if order was filled
+                updated_order = self.load.fetch_order(order['id'])
+                remaining = updated_order['remaining']
+                
+                if remaining == 0:  # fully filled
+                    break
+
+                elapsed_time = time.time() - start_time
+                if elapsed_time >= 300:  # 5 minutes in seconds
+                    # Cancel the unfilled order and create a market order
+                    self.load.cancel_order(order['id'])
+                    self.load.create_market_order(asset, sign, remaining * avg_price)
+                    print("Chaser feature activated. Created market order for remaining qty.")
+                    break
+                
+                # if not fully filled, cancel the order and repeat
+                self.load.cancel_order(order['id'])
+                order_size = remaining * avg_price  # adjust the order size based on the unfilled quantity
+
+            self.hedged_once = True
+            print("Rebalancing trade to achieve delta-neutral portfolio:", sign, str(order_size / avg_price), str(self.symbol))
         else:
-            pass
             print("No need to hedge. Current portfolio delta:", current_delta)
+            
 
     def run_loop(self):
         """
