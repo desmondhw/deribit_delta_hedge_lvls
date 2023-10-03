@@ -60,6 +60,15 @@ class Hedge:
         0.065
         """
         return float(self.load.fetch_balance({'currency': str(self.symbol)})['info']['delta_total'])
+    
+    def cancel_all_orders(self):
+        """
+        Cancels all open orders for the asset.
+        """
+        open_orders = self.load.fetch_open_orders(symbol=f'{self.symbol}-PERPETUAL')
+        for order in open_orders:
+            self.load.cancel_order(order['id'])
+        print("All orders cancelled.")
 
     def delta_hedge(self):
         """
@@ -97,8 +106,10 @@ class Hedge:
                     price = order_book['asks'][0][0] # best offer
                 
                 # create the limit order
-                order = self.load.create_limit_order(asset, sign, order_size, price)
+                print(f"Submitting order size of {order_size} USD at ${price}")
+                order = self.load.create_limit_order(asset, sign, order_size, price, {'postOnly': True})
                 
+                print("Waiting for 5s...")
                 time.sleep(5)  # wait for 5 seconds
                 
                 # check if order was filled
@@ -106,19 +117,20 @@ class Hedge:
                 remaining = updated_order['remaining']
                 
                 if remaining == 0:  # fully filled
+                    print("Limit order fully filled.")
                     break
 
                 elapsed_time = time.time() - start_time
-                if elapsed_time >= 300:  # 5 minutes in seconds
-                    # Cancel the unfilled order and create a market order
+                if elapsed_time >= 60:  # 1 minute
+                    # Cancel the unfilled order and go to market if not filled after 1 minute.
                     self.load.cancel_order(order['id'])
-                    self.load.create_market_order(asset, sign, remaining * avg_price)
+                    self.load.create_market_order(asset, sign, remaining)
                     print("Chaser feature activated. Created market order for remaining qty.")
                     break
                 
                 # if not fully filled, cancel the order and repeat
                 self.load.cancel_order(order['id'])
-                order_size = remaining * avg_price  # adjust the order size based on the unfilled quantity
+                order_size = remaining  # adjust the order size based on the unfilled quantity
 
             self.hedged_once = True
             print("Rebalancing trade to achieve delta-neutral portfolio:", sign, str(order_size / avg_price), str(self.symbol))
@@ -190,6 +202,13 @@ class Hedge:
                     sleep_interval = 60  # 1 minute
 
                 time.sleep(sleep_interval)
+
+            # Exception to cancel all orders in the event of killing program
+            except KeyboardInterrupt:
+                print("Interrupt detected. Cancelling all orders...")
+                self.cancel_all_orders()
+                print("Exiting program.")
+                exit(0)
 
             except Exception as e:
                 print(
