@@ -7,7 +7,7 @@ import time
 
 
 class Hedge:
-    def __init__(self, api_id, api_secret, symbol, threshold, strike, price_change_percent, hedged_once=False):
+    def __init__(self, api_id, api_secret, symbol, threshold, strike, price_change_percent, hedged_once=False, telegram_token=None, telegram_chat_id=None):
         """
         Initializing Hedge class.
         Parameters
@@ -36,12 +36,35 @@ class Hedge:
         self.threshold = abs(float(threshold))
         self.strike = strike
         self.price_change_percent = price_change_percent
+        self.telegram_token = telegram_token
+        self.telegram_chat_id = telegram_chat_id
 
         self.hedged_once = hedged_once  # Initialized to False to keep track of whether an initial hedge has been executed.
 
         if ((self.symbol != 'BTC') and (self.symbol != 'ETH')):
             raise ValueError(
                 "Incorrect symbol - please choose between 'BTC' or 'ETH'")
+        
+    def send_telegram_message(self, message):
+        """
+        Sends a message to the specified Telegram chat.
+        Parameters:
+        - message: str, message to send.
+        """
+        if not self.telegram_token or not self.telegram_chat_id:
+            print("Telegram token or chat ID not provided. Can't send the message.")
+            return
+        send_message_url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
+        payload = {
+            "chat_id": self.telegram_chat_id,
+            "text": message
+        }
+        try:
+            response = requests.post(send_message_url, data=payload)
+            if response.status_code != 200:
+                print("Failed to send Telegram message:", response.content)
+        except Exception as e:
+            print("Error sending Telegram message:", str(e))
 
     def current_index_price(self):
         instrument_name = f'{self.symbol.lower()}_usd'
@@ -210,9 +233,15 @@ class Hedge:
                 print("Exiting program.")
                 exit(0)
 
+            except ccxt.RequestTimeout as e:
+                error_message = f"API Request Timeout Error: {str(e)}"
+                print(error_message)
+                self.send_telegram_message(error_message)
+                time.sleep(60)
+
             except Exception as e:
-                print(
-                    "Script is broken - trying again in 30 seconds. Current portfolio delta:", self.current_delta())
-                print("Error:", str(e))
+                error_message = f"Script is broken - trying again in 30 seconds. Current portfolio delta: {self.current_delta()}. Error: {str(e)}"
+                print(error_message)
+                self.send_telegram_message(error_message)
                 time.sleep(30)
                 pass
