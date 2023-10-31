@@ -256,6 +256,7 @@ class Hedge:
                 print(error_message)
                 self.send_telegram_message(error_message)
                 time.sleep(60)
+                continue
 
             except Exception as e:
                 error_message = f"Script is broken - trying again in 30 seconds. Current portfolio delta: {self.current_delta()}. Error: {str(e)}"
