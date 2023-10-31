@@ -40,6 +40,7 @@ class Hedge:
         self.telegram_chat_id = telegram_chat_id
 
         self.hedged_once = hedged_once  # Initialized to False to keep track of whether an initial hedge has been executed.
+        self._previous_hedged_state = self.hedged_once  # To track the previous state
 
         if ((self.symbol != 'BTC') and (self.symbol != 'ETH')):
             raise ValueError(
@@ -177,8 +178,15 @@ class Hedge:
             print("Rebalancing trade to achieve delta-neutral portfolio:", sign, str(order_size / avg_price), str(self.symbol))
         else:
             print("No need to hedge. Current portfolio delta:", current_delta)
+    
+    def check_hedged_transition(self):
+        """
+        Checks if hedged_once has transitioned from False to True and sends a telegram alert if so.
+        """
+        if not self._previous_hedged_state and self.hedged_once:
+            self.send_telegram_message("The hedged_once flag has been set to True!")
+            self._previous_hedged_state = True
             
-
     def run_loop(self):
         """
         Runs the delta-hedge script every hr to check the delta.
@@ -243,6 +251,9 @@ class Hedge:
                     sleep_interval = 60  # 1 minute
 
                 time.sleep(sleep_interval)
+
+                # Check if hedged_once transitioned from False to True
+                self.check_hedged_transition()
 
             # Exception to cancel all orders in the event of killing program
             except KeyboardInterrupt:
