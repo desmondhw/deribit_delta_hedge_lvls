@@ -121,6 +121,9 @@ class Hedge:
 
             start_time = time.time()  # Store the start time for the chaser feature
 
+            max_retries = 3 # To cater for post order reject execption
+            retries = 0
+
             while order_size > 0:
                 order_book = self.load.fetch_order_book(asset)
                 if sign == 'buy':
@@ -128,9 +131,24 @@ class Hedge:
                 else:
                     price = order_book['asks'][0][0] # best offer
                 
-                # create the limit order
-                print(f"Submitting order size of {order_size} USD at ${price}")
-                order = self.load.create_limit_order(asset, sign, order_size, price, {'postOnly': True})
+                try:
+                    # create the limit order
+                    print(f"Submitting order size of {order_size} USD at ${price}")
+                    order = self.load.create_limit_order(asset, sign, order_size, price, {'postOnly': True})
+                    retries = 0  # Reset retry counter if order is successful
+                # Manage post order reject execption
+                except ccxt.NetworkError as error:
+                    print(f"Network error: {error}")
+                    if retries < max_retries:
+                        retries += 1
+                        time.sleep(2**retries)  # Exponential backoff
+                        continue
+                    else:
+                        print("Max retries reached. Moving to next order.")
+                        return
+                except ccxt.ExchangeError as error:
+                    print(f"Order error: {error}")
+                    return
                 
                 print("Waiting for 5s...")
                 time.sleep(5)  # wait for 5 seconds
